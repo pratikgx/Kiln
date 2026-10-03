@@ -1,6 +1,6 @@
 ---
 name: playwright
-description: Look at Kiln's UI in a real browser, and run its end-to-end tests. Use when checking UI you are changing, taking a screenshot of the app, driving the app with playwright-cli, starting the dev sandbox with playwright_server.sh, running or debugging `npm run tests:e2e`, or working with the seeded fixture project that gives the app's screens data to render.
+description: Look at Kiln's UI in a real browser, and run its end-to-end tests. Use when checking UI you are changing, taking a screenshot of the app, driving the app with playwright-cli, closing or cleaning up a playwright-cli browser, starting the dev sandbox with playwright_server.sh, running or debugging `npm run tests:e2e`, or working with the seeded fixture project that gives the app's screens data to render.
 ---
 
 # Using Playwright with Kiln
@@ -35,12 +35,38 @@ playwright-cli localstorage-set ui_state \
 playwright-cli goto http://localhost:6544
 ```
 
-Then `goto` any deep link you like. `stop` when you are done, `status` if you are
-not sure what is running.
+Then `goto` any deep link you like. `stop` when you are done, and close the browser
+too (next section). `status` if you are not sure what is running.
 
 The sandbox keeps its data in `app/web_ui/.agent_dev_home` and is seeded from a
 committed fixture project, so the screens have content instead of an onboarding
 wizard. It never touches real Kiln projects.
+
+## Close the browser when you are done
+
+A `playwright-cli` browser has no window, and nothing closes it for you: it keeps
+running after your session ends, and `playwright_server.sh stop` stops the server,
+not the browser. Close the session you opened (`playwright-cli -s=<name> close`
+for a named one), then confirm `list` no longer shows it:
+
+```bash
+playwright-cli close
+playwright-cli list
+```
+
+Close only your own session. `close-all` and `kill-all` can reach other agents'
+sessions and parallel QA lanes, and `kill-all` leaves the browsers running anyway.
+To clean up browsers that earlier sessions left behind, see
+[references/driving_the_ui.md](references/driving_the_ui.md#cleaning-up-browsers-left-running).
+
+## Use Playwright's Chromium, not your own Chrome
+
+Never pass `--browser=chrome`, even though the `playwright-cli` skill's examples
+show it. It runs your installed Google Chrome, hidden, with a throwaway profile. On
+macOS, while it runs, Chrome's Dock icon and links from other apps can seem to do
+nothing, most likely because macOS sends them to the hidden Chrome. A missing
+`~/.playwright/cli.config.json` has the same effect on any machine with Chrome
+installed; `setup_env.sh --add-playwright` writes it.
 
 ## A provider may be connected — spend it carefully
 
@@ -90,7 +116,7 @@ Load only what the task needs.
 
 | File | When |
 |---|---|
-| [references/driving_the_ui.md](references/driving_the_ui.md) | The command surface, and the locator traps in Kiln's UI specifically — duplicate labels, dropdowns, collapsed sections |
+| [references/driving_the_ui.md](references/driving_the_ui.md) | The command surface, cleaning up browsers left running, and the locator traps in Kiln's UI specifically — duplicate labels, dropdowns, collapsed sections |
 | [references/e2e_suite.md](references/e2e_suite.md) | Running, reading, or debugging `npm run tests:e2e` |
 | [references/seeded_project.md](references/seeded_project.md) | What the fixture contains, screen by screen, and whether a model provider is connected. Check here before concluding a screen is broken because it came up empty |
 | [references/search_tool.md](references/search_tool.md) | The Docs & Search / RAG part of the fixture, and what a sandbox with no API key can still do with it |

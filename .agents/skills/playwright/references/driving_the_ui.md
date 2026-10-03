@@ -34,14 +34,49 @@ playwright-cli close
 
 If `open` fails saying Chromium distribution `chrome` was not found, the config
 below is missing. Without it playwright-cli launches a branded Google Chrome,
-which no container has. `--browser=chromium` is the one-off workaround; the fix
-is `setup_env.sh --add-playwright`.
+which no container has. On a machine that does have Chrome nothing fails: you
+get your own Chrome, hidden, which the skill's "Use Playwright's Chromium, not
+your own Chrome" section warns against. `--browser=chromium` is the one-off
+workaround; the fix is `setup_env.sh --add-playwright`.
 
 That config lives at `~/.playwright/cli.config.json` — playwright-cli's global
 config, not a file in the repo, because which browser is installed is a fact
 about your machine. Both setup scripts write it, and only when it is missing, so
 your own edits survive. Being global is also what makes the commands above work
 from any directory rather than only the repo root.
+
+## Cleaning up browsers left running
+
+`playwright-cli list --all` shows only the sessions playwright-cli can still reach. A
+browser whose background process died, or was stopped with `kill-all`, is missing
+from that list but keeps running, so count the processes instead. This reaches
+every Playwright browser on the machine, including other agents' sessions,
+parallel QA lanes and a running `npm run tests:e2e`, so do it only when nothing
+else is using Playwright:
+
+```bash
+playwright-cli close-all
+pgrep -f '[p]laywright_chromiumdev_profile' | wc -l
+```
+
+Closing takes a few seconds, so give the count a moment to reach 0. If it stays
+above 0, force the rest closed:
+
+```bash
+pkill -9 -f '[p]laywright_chromiumdev_profile'
+```
+
+The pattern matches only the temporary profiles Playwright launches its browsers
+with, so a browser that Playwright did not launch, like your everyday Chrome, is
+safe. The brackets stop `pgrep` and `pkill` from matching the shell that runs them,
+which on Linux would otherwise count, or kill, your own command. A `--persistent`
+session keeps its profile in playwright-cli's cache instead, so the count misses
+it; `list --all` shows it.
+
+Avoid `kill-all`, even though the `playwright-cli` skill describes it as killing
+all browser processes. It stops playwright-cli's background processes and leaves
+the browsers running, out of `list`'s sight, and a plain `pkill` then no longer
+stops them.
 
 ## Screenshots: never trust the first frame
 
